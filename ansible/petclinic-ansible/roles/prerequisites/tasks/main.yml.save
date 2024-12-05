@@ -1,0 +1,78 @@
+- name: Update package lists
+  apt:
+    update_cache: yes
+- name: Install sysstat
+  ansible.builtin.apt:
+    name: sysstat
+    state: present
+
+- name: Install OpenJDK 17
+  ansible.builtin.apt:
+    name: openjdk-17-jdk
+    state: present
+
+- name: Download install.sh
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/snappyflow/apm-agent/master/install.sh
+    dest: /tmp/install.sh
+    validate_certs: yes
+    
+- name: change permissions
+  ansible.builtin.command:
+    cmd: chmod +x /tmp/install.sh
+
+- name: Install sfAgent
+  ansible.builtin.command:
+    cmd: /bin/bash /tmp/install.sh
+  register: install_output
+
+- name: Print output of Install sfAgent
+  ansible.builtin.debug:
+    var: install_output
+
+- name: Generate config
+  ansible.builtin.command:
+    cmd: ./sfagent -generate-config
+    chdir: /opt/sfagent
+  register: sfAgent_config
+
+  
+- name: Print generated config output
+  ansible.builtin.debug:
+    var: sfAgent_config.stdout_lines
+  when: sfAgent_config.changed
+
+- name: Copy generated config
+  ansible.builtin.copy:
+    src: /opt/sfagent/config-generated.yaml
+    dest: /opt/sfagent/config.yaml
+    remote_src: yes
+
+- name: Replace Name key in YAML file
+  lineinfile:
+    path: /opt/sfagent/config.yaml
+    regexp: '^ *Name:'
+    line: '  Name: {{ name }}'
+- name: Replace appName key in YAML file
+  lineinfile:
+    path: /opt/sfagent/config.yaml
+    regexp: '^ *appName:'
+    line: '  appName: {{ app_name }}'
+- name: Replace projectName key in YAML file
+  lineinfile:
+    path: /opt/sfagent/config.yaml
+    regexp: '^ *projectName:'
+    line: '  projectName: {{ project_name }}'
+- name: Replace key field in YAML file
+  lineinfile:
+    path: /opt/sfagent/config.yaml
+    regexp: '^ *key:'
+    line: 'key: {{ new_key }}'
+
+- name: Start and enable sfagent services for automatic start
+  systemd:
+    state: restarted
+    name: sfagent.service
+    enabled: yes
+
+

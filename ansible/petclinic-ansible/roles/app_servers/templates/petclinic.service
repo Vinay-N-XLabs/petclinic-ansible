@@ -1,0 +1,16 @@
+[Unit]
+After=syslog.target
+After=network.target[Service]
+User=username
+Type=simple
+
+[Service]
+WorkingDirectory=/opt/spring-boot-app
+ExecStart=/usr/bin/java -javaagent:/opt/sfagent/sftrace/java/sftrace-java-agent.jar -Delastic.apm.service_name=petclinic -Delastic.apm.metrics_interval=0s -Delastic.apm.enable_log_correlation=true -Dsftrace.service_name=petclinic-service -Delastic.apm.transaction_ignore_urls=/jolokia/* -Delastic.apm.span_frames_min_duration=-1ms -Delastic.apm.use_path_as_transaction_name=true -Delastic.apm.url_groups=/owners/*,/owner/*/edit,/owners/*/pets -Delastic.apm.capture_body=all -Delastic.apm.global_labels=_tag_redact_body=true -jar /opt/spring-boot-app/target/spring-petclinic-3.1.0-SNAPSHOT.jar --spring.profiles.active=mysql
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=petclinic
+
+[Install]
+WantedBy=multi-user.target

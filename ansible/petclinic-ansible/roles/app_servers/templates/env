@@ -1,0 +1,5 @@
+BASE_URL=https://192.168.2.4:80
+PROFILE_KEY=testing
+SERVICE_NAME=petclinicdemo
+PROJECT_NAME=pclinic
+APP_NAME=Petclinic

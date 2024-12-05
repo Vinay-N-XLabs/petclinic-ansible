@@ -1,0 +1,6 @@
+JMETER_HOME: "/opt/apache-jmeter-5.5"
+nginx_port: 80
+name: "Petclinic"
+app_name: Petclinic
+project_name: Petclinic
+new_key: Petclinic

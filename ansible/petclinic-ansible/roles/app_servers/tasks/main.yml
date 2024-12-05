@@ -1,0 +1,71 @@
+---
+
+- name: Install OpenJDK 17
+  ansible.builtin.apt:
+    name: openjdk-17-jdk
+    state: present
+- name: Install Maven
+  ansible.builtin.apt:
+    name: maven
+    state: present
+- name: Check if directory exists
+  stat:
+    path: "/opt/spring-boot-app"
+  register: spring_boot_app_directory
+
+- name: Clone Spring Boot Application from Github
+  git:
+    repo: 'https://github.com/pramurthy/spring-petclinic.git'
+    dest: '/opt/spring-boot-app'
+    clone: yes
+    update: no
+    force: yes
+
+
+- name: Copy application.properties
+  template:
+    src: application.properties
+    dest: "/opt/spring-boot-app/src/main/resources/application.properties"
+    force: yes
+
+- name: Copy application-mysql.properties
+  template:
+    src: application-mysql.properties
+    dest: "/opt/spring-boot-app/src/main/resources/application-mysql.properties"
+    force: yes
+    
+
+- name: Copy petclinic service script to /etc/systemd/system/
+  template:
+    src: env
+    dest: "/opt/spring-boot-app/.env"
+    force: yes
+
+- name: Build JAR file
+  shell:
+    cmd: |
+      mvn spring-javaformat:apply
+      mvn clean package -Dmaven.test.skip=true
+  args:
+    chdir: /opt/spring-boot-app
+
+
+- name: Copy petclinic service script to /etc/systemd/system/
+  template:
+    src: petclinic.service
+    dest: "/etc/systemd/system/petclinic.service"
+    force: yes
+    mode: '0644'
+
+
+- name: Reload systemd daemon to pick up changes
+  systemd:
+    daemon_reload: yes
+
+
+
+- name: Start and enable petclinic services for automatic start
+  systemd:
+    state: restarted
+    name: petclinic.service
+    enabled: yes

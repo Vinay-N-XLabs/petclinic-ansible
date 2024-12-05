@@ -1,0 +1,94 @@
+- name: Update package lists
+  apt:
+    update_cache: yes
+
+- name: Install OpenJDK 17
+  ansible.builtin.apt:
+    name: openjdk-17-jdk
+    state: present
+
+- name: Download Apache JMeter tarball
+  get_url:
+    url: "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.5.tgz"
+    dest: "/tmp/apache-jmeter-5.5.tgz"
+
+- name: Extract Apache JMeter tarball
+  ansible.builtin.unarchive:
+    src: "/tmp/apache-jmeter-5.5.tgz"
+    dest: "/opt"
+    remote_src: yes
+    creates: "/opt/apache-jmeter-5.5"
+
+- name: Set environment variables for JMeter
+  ansible.builtin.lineinfile:
+    dest: "/home/test/.bashrc"
+    line: "{{ item }}"
+    state: present
+  loop:
+    - "export JMETER_HOME=/opt/apache-jmeter-5.5"
+    - "export PATH=$PATH:$JMETER_HOME/bin"
+  become: yes
+  become_user: "{{ ansible_ssh_user }}"
+  when: ansible_distribution == 'Ubuntu'
+
+- name: Verify JMeter installation
+  ansible.builtin.command:
+    "{{ JMETER_HOME }}/bin/jmeter --version"
+  register: jmeter_version
+  changed_when: False
+
+- name: Print JMeter version
+  ansible.builtin.debug:
+    msg: "JMeter version is {{ item.stdout }}"
+  when:
+    - item.stdout is defined
+    - ansible_distribution == 'Ubuntu'
+  loop: "{{ jmeter_version.results }}"
+
+
+- name: Copy run_jmeter.sh script to target node
+  template:
+    src: run_jmeter.sh
+    dest: /home/test/run_jmeter.sh
+    mode: '0755'
+  become: yes
+  become_user: test
+  when: ansible_distribution == 'Ubuntu'
+- name: Ensure jmeter_load.sh uses HTTPS
+  lineinfile:
+    path: /home/test/run_jmeter.sh
+    regexp: 'http://172.31.64.251/owners/new,8,0,0'
+    line: 'https://172.31.64.251/owners/new,8,0,0'
+    backrefs: yes
+  become: yes
+  become_user: test
+  when: ansible_distribution == 'Ubuntu'
+- name: Copy petclinic-jmeter.jmx script to target node
+  template:
+    src: petclinic-jmeter.jmx
+    dest: /home/test/petclinic-jmeter.jmx
+    mode: '0755'
+  become: yes
+  become_user: test
+  when: ansible_distribution == 'Ubuntu'
+
+
+- name: Copy petclinic service script to /etc/systemd/system/
+  template:
+    src: jmeter.service
+    dest: "/etc/systemd/system/jmeter.service"
+    force: yes
+    mode: '0644'
+
+
+- name: Reload systemd daemon to pick up changes
+  systemd:
+    daemon_reload: yes
+
+
+
+- name: Start and enable jmeter services for automatic start
+  systemd:
+    state: restarted
+    name: jmeter.service
+    enabled: yes

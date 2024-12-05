@@ -1,0 +1,22 @@
+- hosts: all
+  gather_facts: yes
+  become: yes
+  tasks:
+    - name: Include prerequisites role
+      include_role:
+        name: prerequisites
+
+    - name: Include app_servers role
+      include_role:
+        name: app_servers
+      when: "'appservers' in group_names"
+
+    - name: Include nginx_servers role
+      include_role:
+        name: nginx_servers
+      when: "'nginxservers' in group_names"
+
+    - name: Include jmeter_servers role
+      include_role:
+        name: jmeter_servers
+      when: "'jmeter' in group_names"
